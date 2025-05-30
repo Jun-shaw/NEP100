@@ -26,5 +26,9 @@ While leveraging **field-standard pipelines** (e.g., Seurat, DESeq2, random fore
 
 ### 3. Independent Validation Tier
 - **Public cohorts**
-- The reproducibility of key metrics (e.g., The key genes are highly enriched in the tumor region of NPEC) using identical public cohorts (e.g., GSE230282 in Figure 4) is expected and desirable in computational biology, as it confirms the robustness of analytical frameworks.
+- The reproducibility of key metrics (e.g., AUC) using identical public cohorts (e.g., Figure 4A) is expected and desirable in computational biology, as it confirms the robustness of analytical frameworks.
 - **Added clinical translation layer** absent in prior computational studies.
+
+
+# Public Dataset Reuse Note
+Performance metric similarities (e.g., AUC) with [Theranostics 2024] in shared public cohorts (e.g., GSE230282) reflect benchmark reliability, not methodological redundancy. 
