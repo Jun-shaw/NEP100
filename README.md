@@ -3,6 +3,11 @@
 This repository supports the study:  
 **"Multi-omics analysis constructs a novel neuroendocrine prostate cancer classifier and classification system"** (Sci Rep 2025).  
 
+## Three pillars of novelty:
+- **Enhance**:  Larger multi-omics scale and more robust NEPC signatures and classifiers
+- **Discovery**: First 4-subtype system (VR_O/Prol_N/Prol_P/EMT_Y) + AMIGO2 target
+- **Validation**:  Clinical IHC + drug screening (absent in prior work)
+
 ## Key Innovations vs. [Theranostics 2024, 14(3):1065-1080]
 While leveraging **field-standard pipelines** (e.g., Seurat, DESeq2), our work introduces:
 
