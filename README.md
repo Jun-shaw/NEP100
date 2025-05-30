@@ -4,7 +4,7 @@ This repository supports the study:
 **"Multi-omics analysis constructs a novel neuroendocrine prostate cancer classifier and classification system"** (Sci Rep 2025).  
 
 ## Key Innovations vs. [Theranostics 2024, 14(3):1065-1080]
-While leveraging **field-standard pipelines** (e.g., Seurat, DESeq2, random forest), our work introduces:
+While leveraging **field-standard pipelines** (e.g., Seurat, DESeq2), our work introduces:
 
 ### 1. Methodological Advancements:(It conforms to the conventional pattern of methodological progress)
 - **Unprecedented scale**:  
