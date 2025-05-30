@@ -31,4 +31,4 @@ While leveraging **field-standard pipelines** (e.g., Seurat, DESeq2, random fore
 
 
 # Public Dataset Reuse Note
-Performance metric similarities (e.g., AUC) with [Theranostics 2024] in shared public cohorts (e.g., GSE230282) reflect benchmark reliability, not methodological redundancy. 
+Performance metric similarities (e.g., The key genes are highly enriched in the tumor region of NPEC) with [Theranostics 2024] in shared public cohorts (e.g., Spatial transcriptomics GSE230282) reflect benchmark reliability, not methodological redundancy. 
