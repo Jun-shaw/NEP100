@@ -31,7 +31,7 @@ While leveraging **field-standard pipelines** (e.g., Seurat, DESeq2), our work i
 
 ### 3. Independent Validation Tier
 - **Public cohorts**
-- The reproducibility of key metrics (e.g., AUC) using identical public cohorts (e.g., Figure 4A) is expected and desirable in computational biology, as it confirms the robustness of analytical frameworks.
+  - The reproducibility of key metrics (e.g., AUC) using identical public cohorts (e.g., Figure 4A) is expected and desirable in computational biology, as it confirms the robustness of analytical frameworks.
 - **Added clinical translation layer** absent in prior computational studies.
 
 
