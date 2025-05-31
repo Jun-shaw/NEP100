@@ -33,7 +33,7 @@ EZGen:filter_DEGs(expr.data ='CRPC_vs_primary_matrix.csv',
                   data.type ='mRNA',
                   deg.method='DESeq2',
                   Pvalue    =0.05,
-                  log2FC    =2,
+                  log2FC    =1,
                   TCGA      =F,
                   tumor.num =484,
                   normal.num=708,
@@ -485,7 +485,7 @@ write.csv(NEPdownsig,'NEPdownsig.csv')
 ######################计算基因集评分###########
 genesets <- read.csv('G:/importance/undergraduated/数据集整理/genesets.csv')
 saveRDS(genelist,'genelist.rds')
-Cal_score <- function(seurat.harmony=seurat.harmony,genesets=genesets,ctrl = 100,seed=520){
+Cal_score <- function(seurat.harmony=seurat.harmony,genesets=genesets,ctrl = 100){
   
   genelist_all <- list()
   for (i in seq_along(genesets)) {
