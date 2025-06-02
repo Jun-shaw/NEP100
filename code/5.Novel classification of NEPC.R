@@ -619,9 +619,8 @@ Prol_E_marker <- subset(mark$gene,mark$subtype=='Prol_E')
 EMT_R_marker <- subset(mark$gene,mark$subtype=='EMT_R')
 
 
-ne.data <- read.csv('G:/importance/undergraduated/数据集整理/bulk data（clinical）/NEPC/NE.csv',row.names = 1)
+ne.data <- read.csv('NE.csv',row.names = 1)
 
-saveRDS(expr,'NE.expr.group.rds')
 
 marker <- list(NEC_O=NEC_O_marker,
                Prol_H=Prol_H_marker,
@@ -629,9 +628,6 @@ marker <- list(NEC_O=NEC_O_marker,
                EMT_R=EMT_R_marker)
 
 library(IOBR)
-
-expr <- read.csv("G:/importance/undergraduated/肾癌数据集/bulk/TCGA/TCGA.csv",row.names = 1)
-
 rs2 <- IOBR::calculate_sig_score(pdata           = NULL,
                                  eset            = expr,
                                  signature       = list(intersection_up_sample),
@@ -663,9 +659,9 @@ column_clusters <- kmeans_result$cluster
 column_clusters2 <- read.csv('bulk_group.csv')
 column_clusters2$x <- factor(column_clusters2$x,levels = c('NEC-NE','Mixed-NE','EMT-NE','Low-spec'))
 
-
 res <- as.data.frame(res)
 row.names(group) <- group[,1]
+
 
 res2 <- res[,-c(1,18)]
 res2 <- as.matrix(res2)
@@ -694,9 +690,10 @@ Heatmap(res2,  # 不包含 NE 列
 # right_annotation = ha_right,
 #top_annotation = ha_top_combined)
 
-#########三元图################
-devtools::install_local("G:/迅雷下载/scTernary-main")  
-data_exp_mat <- read.csv("G:/importance/undergraduated/数据集整理/bulk data（clinical）/NEPC/NE.csv",row.names = 1)
+#########################################
+##################Figure 7I##############
+#########################################
+data_exp_mat <- read.csv("NE.csv",row.names = 1)
 anno_signature_genes <- read.csv('bulk_markers.csv')
 library(scTernary)
 # 调用函数生成三元图数据
