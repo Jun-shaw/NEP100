@@ -83,14 +83,6 @@ for (i in seq_along(folders)) {
   percent.hb <-  colSums(C[hb.genes,]) / Matrix::colSums(C) * 100
   allcell <- AddMetaData(allcell, percent.hb, col.name = "percent.hb")
   
-  #计算细胞周期分数
-  s.genes=Seurat::cc.genes.updated.2019$s.genes
-  g2m.genes=Seurat::cc.genes.updated.2019$g2m.genes
-  
-  allcell=CellCycleScoring(object = allcell, 
-                           s.features = s.genes, 
-                           g2m.features = g2m.genes, 
-                           set.ident = TRUE)
   
   VlnPlot(allcell, features = c("nFeature_RNA", "nCount_RNA", "percent.mt", 'percent.rb', 'percent.hsp','percent.hb'), ncol = 3,group.by = "orig.ident")
   ggsave(filename = paste0('./QC VlnPlot/',sampleID,' QC VlnPlot.pdf'),width = 12,height = 8)
@@ -119,7 +111,7 @@ for (i in seq_along(folders)) {
   saveRDS(allcell.qc3, paste0(root_directory,sampleID,'.rds'))
 }
 
-####################注释##################
+####################annotation##################
 
 folder_path <- "G:/importance/undergraduated/数据集整理/single cell/暂存/"
 file_list.path <- list.files(path = folder_path, pattern = "\\.rds$", full.names = T)
@@ -176,7 +168,7 @@ GSE215943@meta.data <- GSE215943@meta.data %>%
     sampleID == 'GSM6647953' ~ 'ENZ_D7',
     sampleID == 'GSM6647954' ~ 'ENZ_D14'
   ))
-###################多样本合并################
+##################Combination of multiple samples################
 # 读入和处理每个样本的数据
 library(Seurat)
 library(dplyr)
@@ -212,11 +204,11 @@ for (i in 1:length(file_list.path)) {
   seurat.data.list[i] <- read_rds(file_list.path[i])
 }
 
-#合并
+#Combination
 merge.seurat.data <- merge(seurat.data.list[[1]],
                            y=c(seurat.data.list[[2]], seurat.data.list[[3]], seurat.data.list[[4]], seurat.data.list[[5]], seurat.data.list[[6]], seurat.data.list[[7]], seurat.data.list[[8]], seurat.data.list[[9]], seurat.data.list[[10]], seurat.data.list[[11]], seurat.data.list[[12]], seurat.data.list[[13]], seurat.data.list[[14]], seurat.data.list[[15]], seurat.data.list[[16]], seurat.data.list[[17]], seurat.data.list[[18]], seurat.data.list[[19]], seurat.data.list[[20]], seurat.data.list[[21]], seurat.data.list[[22]], seurat.data.list[[23]], seurat.data.list[[24]], seurat.data.list[[25]], seurat.data.list[[26]], seurat.data.list[[27]], seurat.data.list[[28]], seurat.data.list[[29]], seurat.data.list[[30]], seurat.data.list[[31]], seurat.data.list[[32]], seurat.data.list[[33]], seurat.data.list[[34]], seurat.data.list[[35]], seurat.data.list[[36]], seurat.data.list[[37]], seurat.data.list[[38]], seurat.data.list[[39]], seurat.data.list[[40]], seurat.data.list[[41]], seurat.data.list[[42]], seurat.data.list[[43]], seurat.data.list[[44]], seurat.data.list[[45]], seurat.data.list[[46]], seurat.data.list[[47]], seurat.data.list[[48]], seurat.data.list[[49]], seurat.data.list[[50]], seurat.data.list[[51]], seurat.data.list[[52]], seurat.data.list[[53]], seurat.data.list[[54]], seurat.data.list[[55]], seurat.data.list[[56]], seurat.data.list[[57]], seurat.data.list[[58]], seurat.data.list[[59]], seurat.data.list[[60]], seurat.data.list[[61]], seurat.data.list[[62]], seurat.data.list[[63]], seurat.data.list[[64]], seurat.data.list[[65]], seurat.data.list[[66]], seurat.data.list[[67]], seurat.data.list[[68]], seurat.data.list[[69]], seurat.data.list[[70]]),
 )
-#去批次化效应
+#Eliminate batch effect
 
 RemoveBatch = function(seurat.data, 
                        batchID = "Data.sets", 
@@ -236,8 +228,8 @@ RemoveBatch = function(seurat.data,
 
 seurat.harmony <- RemoveBatch(seurat.data = seurat.harmony, n.pcs = 50,methods = "harmony",batchID = "datasetsID" )
 
-#聚类分群
-#选择
+#Clustering and grouping
+#selection parameter
 ElbowPlot(seurat.harmony, ndims=50, reduction="nCount_RNA") 
 pct <- seurat.harmony[["pca"]]@stdev / sum(seurat.harmony[["pca"]]@stdev) * 100 ; cumu <- cumsum(pct)
 pc.use <- min(which(cumu > 90 & pct < 5),sort(which((pct[1:length(pct) - 1] - pct[2:length(pct)]) > 0.1),decreasing = T)[1] + 1)
@@ -247,7 +239,6 @@ ElbowPlot(seurat.harmony)$data %>% ggplot() +
   geom_vline(xintercept = pc.use, color = "darkred") +
   theme_bw() + labs(title = "Elbow plot: quantitative approach")
 
-#聚类重要代码
 seurat.harmony <- FindNeighbors(seurat.harmony,reduction = 'pca',dims = 1:pc.use)#选择多少个PCA维度进行分析
 
 seurat.harmony <- FindClusters(seurat.harmony,resolution = seq(from = 0.1,to = 0.5, by = 0.1))#测试选择分辨率大小
@@ -256,7 +247,7 @@ clustree(seurat.harmony)
 
 seurat.harmony <- FindClusters(seurat.harmony,resolution = 0.3)
 
-#可视化
+#UMAP
 seurat.harmony <- RunUMAP(seurat.harmony, 
                           reduction = "harmony", 
                           dims = 1:pc.use, 
@@ -312,33 +303,18 @@ features = c(
 
 DotPlot(object = seurat.harmony,features =features ,scale.by = "size") + coord_flip()
 #手动注释
-
-Epithelial_cluster <- c(5,8,11)
-
-Luminal_cluster <- c(0:3,13,16,17,19,21,24,29)
-
-NE_cluster<- c(15,28,30)
-#endothelial
-Ecs_cluster <-c(4,14)
-
-#plasma cell
-Fib_cluster <- c(6,18)
-
-MyoFib_cluster<- c(7,12,27)
-
-#epithelial cell
-Mast_cluster <- 23
-
-Mye_cluster <-c(10,22) 
-
-T_cluster<- c(9,25)
-
-NK_cluster <- 24
-
-B_cluster<- c(20)
-
-Plasma_cluster <- 26
-
+Epithelial_cluster <- c()
+Luminal_cluster <- c()
+NE_cluster<- c()
+Ecs_cluster <-c()
+Fib_cluster <- c()
+MyoFib_cluster<- c()
+Mast_cluster <- 
+Mye_cluster <-c() 
+T_cluster<- c()
+NK_cluster <- 
+B_cluster<- c()
+Plasma_cluster <- 
 
 seurat.harmony@meta.data <- seurat.harmony@meta.data %>% 
   mutate(celltype = case_when(
@@ -353,22 +329,12 @@ seurat.harmony@meta.data <- seurat.harmony@meta.data %>%
     seurat_clusters %in% Ecs_cluster ~ 'Ecs',
     seurat_clusters %in% Epithelial_cluster ~ 'Epithelial',
     seurat_clusters %in% Luminal_cluster ~ 'Luminal',
-    seurat_clusters %in% NE_cluster ~ 'NE'
-    
-  ))
+    seurat_clusters %in% NE_cluster ~ 'NE'))
+
 seurat.harmony@meta.data$celltype <- factor(seurat.harmony@meta.data$celltype,
-                                            levels = levels = c('Epithelial',
-                                                                'Luminal', 
-                                                                'NE',
-                                                                'Fib',
-                                                                'MyoFib',
-                                                                'Ecs',
-                                                                'Mast',
-                                                                'Mye',
-                                                                'T',
-                                                                'NK',
-                                                                'B',
-                                                                'Plasma'))
+                                            levels =  c('Epithelial','Luminal', 'NE',
+                                                                'Fib','MyoFib','Ecs','Mast','Mye',
+                                                                'T','NK','B','Plasma'))
 table(Idents(seurat.harmony) )
 table(seurat.harmony@meta.data$seurat_clusters )
 table(seurat.harmony@meta.data$celltype )
@@ -380,14 +346,14 @@ DimPlot(seurat.harmony, reduction = "umap", group.by = "celltype", pt.size=1.4)+
   axis.ticks = element_blank(),axis.text = element_blank())
 
 
-####################可视化##################
+####################visualization##################
 library(plot1cell)
 library(Seurat) 
 library(tidyverse)
 library(stringr)
 library(RColorBrewer)
 
-# 设置细胞分群信息的颜色
+# Set the color palette
 cluster_colors<-c('#b30c2a','#ce5c69','#F99999','#e0a980','#f4c889','#bdd5a3','#86a979','#519981','#8ba1c6','#5770a6','#a281b1','#735c88')
 datasetsID_colors<-c('#b30c2a','#ce5c69','#e0a980','#f4c889','#bdd5a3','#519981','#8ba1c6','#5770a6','#a281b1')
 sampletype_colors <- c('#ce5c69','#f4c889','#bdd5a3','#5770a6','#a281b1')
@@ -399,17 +365,67 @@ set.seed(20000709)
 
 circ_data_sorted <- circ_data[order(circ_data$celltype), ]
 circ_data_sorted$Cluster <- factor(circ_data_sorted$Cluster,
-                                   levels = c('Epithelial',
-                                              'Luminal', 
-                                              'NE',
-                                              'Fib',
-                                              'MyoFib',
-                                              'Ecs',
-                                              'Mast',
-                                              'Mye'
-                                              , 'T'
-                                              ,'NK','B','Plasma'))
-
+                                   levels = c('Epithelial','Luminal', 'NE',
+                                                                'Fib','MyoFib','Ecs','Mast','Mye',
+                                                                'T','NK','B','Plasma'))
+#UMAP plotting function
+plot_circlize_change <- function (data_plot, do.label = T, contour.levels = c(0.2, 0.3), 
+                                  pt.size = 0.5, kde2d.n = 1000, contour.nlevels = 100, bg.color = "#F9F2E4", 
+                                  col.use = NULL, label.cex = 0.5, labels.cex = 0.5, circos.cex = 0.5 ,repel = FALSE) 
+{
+  centers <- data_plot %>% dplyr::group_by(Cluster) %>% summarise(x = median(x = x), 
+                                                                  y = median(x = y))
+  z <- MASS::kde2d(data_plot$x, data_plot$y, n = kde2d.n)
+  celltypes <- names(table(data_plot$Cluster))
+  cell_colors <- (scales::hue_pal())(length(celltypes))
+  if (!is.null(col.use)) {
+    cell_colors = col.use
+    col_df <- data.frame(Cluster = celltypes, color2 = col.use)
+    cells_order <- rownames(data_plot)
+    data_plot <- merge(data_plot, col_df, by = "Cluster")
+    rownames(data_plot) <- data_plot$cells
+    data_plot <- data_plot[cells_order, ]
+    data_plot$Colors <- data_plot$color2
+  }
+  circos.clear()
+  par(bg = bg.color)
+  circos.par(cell.padding = c(0, 0, 0, 0), track.margin = c(0.01, 
+                                                            0), track.height = 0.01, gap.degree = c(rep(2, (length(celltypes) - 
+                                                                                                              1)), 12), points.overflow.warning = FALSE)
+  circos.initialize(sectors = data_plot$Cluster, x = data_plot$x_polar2)
+  circos.track(data_plot$Cluster, data_plot$x_polar2, y = data_plot$dim2, 
+               bg.border = NA, panel.fun = function(x, y) {
+                 circos.text(CELL_META$xcenter, CELL_META$cell.ylim[2] + 
+                               mm_y(4), CELL_META$sector.index, cex = labels.cex,
+                             col = "black", facing = "bending.inside", niceFacing = T)
+                 #circos.axis(labels.cex = 0.3, col = "black", labels.col = "black")
+                 circos.axis(labels.cex = circos.cex, col = "black", labels.col = "black")
+               })
+  for (i in 1:length(celltypes)) {
+    dd <- data_plot[data_plot$Cluster == celltypes[i], ]
+    circos.segments(x0 = min(dd$x_polar2), y0 = 10, x1 = max(dd$x_polar2), 
+                    y1 = 10, col = cell_colors[i], lwd = 5,sector.index = celltypes[i])
+  }
+  text(x = 1, y = 0.1, labels = "Cluster", cex = 0.4, col = "black", 
+       srt = -90)
+  points(data_plot$x, data_plot$y, pch = 19, col = alpha(data_plot$Colors, 
+                                                         0.2), cex = pt.size)
+  contour(z, drawlabels = F, nlevels = 50, lty = 2,lwd = 2, levels = contour.levels, 
+          col = "black", add = TRUE)
+  if (do.label) {
+    if (repel) {
+      textplot(x = centers$x, y = centers$y, words = centers$Cluster, 
+               cex = label.cex, new = F, show.lines = F)
+    }
+    else {
+      text(centers$x, centers$y, labels = centers$Cluster, 
+           cex = label.cex, col = "black")
+    }
+  }
+}
+#########################################
+##################Figure 2A##############
+#########################################
 plot_circlize_change(circ_data_sorted,do.label =F, pt.size = 0.1, 
                      col.use = cluster_colors ,
                      bg.color = 'white', 
@@ -418,11 +434,9 @@ plot_circlize_change(circ_data_sorted,do.label =F, pt.size = 0.1,
                      labels.cex = 1, 
                      circos.cex = 0.5,
                      label.cex = 1)
-table(circ_data_sorted$datasetsID)
-
 add_track(circ_data_sorted, 
           group = "datasetsID", track_lwd = 3,
-          colors = datasetsID_colors, track_num = 2) ## can change it to one of the columns in the meta data of your seurat object
+          colors = datasetsID_colors, track_num = 2) 
 add_track(circ_data_sorted, 
           group = "sampletype",track_lwd = 3,
           colors = sampletype_colors, track_num = 3)
@@ -432,8 +446,6 @@ add_track(circ_data_sorted,
 add_track(circ_data_sorted, 
           group = "tissuesource",track_lwd = 3,
           colors = tissuesource_colors, track_num = 5)
-
-
 ###################datasetsID
 umap_plot1 <- DimPlot(seurat.harmony, 
                       cols = cluster_colors, 
@@ -518,7 +530,9 @@ DimPlot(seurat.harmony,
         axis.text = element_blank(),
         legend.position = "none",plot.title = element_blank()) 
 
-##################小提琴图 #######
+#########################################
+##################Figure 2B##############
+#########################################
 features = c( 
   # Epithelial
   'KRT8', 'CDH1', 'DST','LCN2','EPCAM',
@@ -563,7 +577,193 @@ VlnPlot(seurat.harmony,features=reversed_features,
         stack=T,cols=color_vector,flip=T,pt.size = 0
 )+NoLegend()
 
-##################气泡图###################
+
+#####################Calculate the score of the gene set：AddModuleScore###########
+genesets <- read.csv('G:/importance/undergraduated/数据集整理/genesets.csv')
+saveRDS(genelist,'genelist.rds')
+
+Cal_score <- function(seurat.harmony=seurat.harmony,genesets=genesets,ctrl = 100,seed=520){
+  genelist_all <- list()
+  for (i in seq_along(genesets)) {
+    library(Seurat)
+    genelist.name <- colnames(genesets)[i]
+    print(genelist.name)
+    genelist<- genesets[,i]
+    genelist <- genelist[nzchar(genelist)]
+    
+    genelist_all[[length(genelist_all) + 1]] <- genelist
+    names(genelist_all)[i] <- genelist.name
+    
+    seurat.harmony <- AddModuleScore(seurat.harmony,
+                                     features = list(genelist),
+                                     ctrl = ctrl,search = T,seed = seed,
+                                     name = genelist.name)
+    
+    colname <- grep(genelist.name, colnames(seurat.harmony@meta.data), value = TRUE)
+    if (length(colname) > 1) {
+      seurat.harmony@meta.data[[genelist.name]] <- rowMeans(seurat.harmony@meta.data[, colname], na.rm = TRUE)
+      seurat.harmony@meta.data[, colname] <- NULL
+    } else if (length(colname) == 1) {
+      seurat.harmony@meta.data[[genelist.name]] <- seurat.harmony@meta.data[[colname]]
+      seurat.harmony@meta.data[[colname]] <- NULL
+    }
+    
+    #parts <- strsplit(genelist.name, "\\.")[[1]]
+    #genelist.name_up_down <- paste(parts[1:2], collapse = ".")
+    #col_up_down <- grep(genelist.name_up_down, colnames(seurat.harmony@meta.data), value = TRUE)
+    #if (length(col_up_down) == 2) {
+    #  seurat.harmony@meta.data[[genelist.name_up_down]] <- seurat.harmony@meta.data[,col_up_down[[1]]]-seurat.harmony@meta.data[,col_up_down[[2]]]
+    #  seurat.harmony@meta.data[, col_up_down] <- NULL
+    #}
+    
+  }
+  
+  return(seurat.harmony@meta.data)
+}
+
+score.res <- Cal_score(seurat.harmony=seurat.harmony,genesets=genesets)
+score.res <- seurat.harmony@meta.data
+
+#####################celltype
+celltype_values <- unique(score.res$celltype12)
+result_matrix <- matrix(NA, nrow = length(celltype_values), ncol =29)
+rownames(result_matrix) <- celltype_values
+for (i in 1:29) {
+  for (celltype in celltype_values) {
+    subset_data <- score.res[score.res$celltype12 == celltype, i+30]
+    result_matrix[celltype, i] <- mean(subset_data, na.rm = TRUE)
+  }
+}
+colnames(result_matrix) <- colnames(score.res)[31:59]
+
+View(result_matrix)
+result_matrix <- t(result_matrix)
+write.csv(result_matrix,'celltype_score.csv')
+###################sampletype
+sampleID_values <- unique(score.res$sampleID)
+result_matrix2 <- matrix(NA, nrow = length(sampleID_values), ncol =29)
+rownames(result_matrix2) <- sampleID_values
+for (i in 1:29) {
+  for (sampleID in sampleID_values) {
+    subset_data <- score.res[score.res$sampleID == sampleID, i+30]
+    result_matrix2[sampleID, i] <- mean(subset_data, na.rm = TRUE)
+  }
+}
+colnames(result_matrix2) <- colnames(score.res)[31:59]
+
+View(result_matrix2)
+result_matrix2 <- t(result_matrix2)
+write.csv(result_matrix2,'sampleID_score.csv')
+#########################################
+##################Figure 2C##############
+#########################################
+library(ggpubr) 
+for (i in seq_along(genelist_all)) {
+  print(i)
+  geneSet <- names(genelist_all)[i]
+ggviolin(seurat.harmony@meta.data, x="celltype", y=geneSet, width = 1, 
+         color = "black",#轮廓颜色
+         fill="celltype",#填充
+         palette = col,
+         add = 'mean_sd',
+         ylab=geneSet,font.y = 24,
+         xlab = F, #不显示x轴的标签
+         bxp.errorbar=T,#显示误差条
+         bxp.errorbar.width=0.5, #误差条大小
+         size=1, #箱型图边线的粗细
+         outlier.shape=NA, #不显示outlier
+         legend = "none"
+)+ theme(
+  axis.text.x = element_text(size = 20, angle = 45, hjust = 1),  # x轴标签设置
+  axis.text.y = element_text(size = 20))  # y轴标签设置
+ggsave(filename = paste0('AUCell/', geneSet, '.pdf'), width = 6, height = 6, units = 'in')
+}
+#########################################
+##################Figure 2D##############
+#########################################
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+data <- read.csv('sampleID_score.csv',row.names = 1)
+colnames(data)
+data$sampletype <- factor(data$sampletype,levels = c('Primary','mCSPC','CRPC','mCRPC','NEPC'))
+
+datane <- data %>%
+  filter(NE == 'NE')
+# 根据 NE 的不同值指定颜色
+for (i in 1:27) {
+  datasetID <- colnames(data)[i]
+  print(datasetID)
+  #############scatter diagram
+  ggplot() +
+    geom_point(data = data,
+               aes(x = ISUP, y = data[[datasetID]], fill = NE),
+               size = 5,
+               shape = 21,
+               color = "black") +
+    theme_classic() +
+    theme(
+      legend.position = "top",
+      legend.text = element_text(face = "italic",size = 24),
+      axis.title.x = element_text(size = 24), axis.text = element_text(size = 20,color = "black"),
+      axis.title.y = element_text(size = 24),axis.line = element_line(color = "black", size = 0),
+      panel.border = element_rect(color = "black", fill = NA, size = 2)  # 添加边框
+    ) +
+    guides(fill = guide_legend(ncol = 2, title = NULL,size = 24)) +
+    labs(x = "ISUP",
+         y = "Mudule Score") +
+    scale_fill_manual(values = c("NE" = "#ce5c69", "nonNE" = "#5770a6")) +
+    stat_cor(data = data, aes(x = ISUP, y = data[[datasetID]]), method = "pearson", 
+             label.y = max(data[[datasetID]], na.rm = TRUE) * 0.9, size = 6) +
+    # 添加带置信区间的回归线
+    geom_smooth(data = data, aes(x = ISUP, y = data[[datasetID]]), 
+                method = "lm", 
+                se = TRUE,  # 显示置信区间
+                color = "#a281b1", 
+                linetype = "dashed",  # 设置为虚线
+                size = 1.5)  # 设置线条粗细
+  ggsave(filename = paste0('ISUP/', datasetID, '.pdf'), width = 6, height = 6, units = 'in')
+}
+#########################################
+##################Figure 2D##############
+#########################################
+for (i in 1:27) {
+  datasetID <- colnames(data)[i]
+  print(datasetID)
+  
+  comparisons_list <- list(
+    c("NEPC", "CRPC"),
+    c("NEPC", "mCRPC"),
+    c("NEPC", "mCSPC") ,
+    c("NEPC", "Primary") # 添加更多的比较组
+  )
+  
+  ######Box plot
+  ggplot(seurat.harmony@meta.data, aes(x = sampletype, y = datasetID)) +
+    geom_boxplot(outlier.size = 1.5, size = 1.2, aes(color = NE), outlier.shape = NA) +  # 设置箱式图的边框颜色
+    geom_jitter(aes(fill = NE), position = position_jitter(width = 0.3), size = 5, shape = 21, color = "black") +  # 设置散点的边框颜色为黑色
+    theme_minimal(base_size = 16, base_family = "sans") + 
+    theme(
+      text = element_text(size = 16),  # 调整字体大小
+      axis.title = element_text(size = 24),  # 调整轴标题的大小
+      axis.text = element_text(size = 20,color = "black"), 
+      panel.grid.major = element_blank(),  # 去掉主网格线
+      panel.grid.minor = element_blank(),  # 去掉次网格线
+      axis.line = element_line(size = 0.5)  # 添加坐标轴线
+    ) +
+    labs(x = "", y = "Module Score") +
+    scale_color_manual(values = c("#ce5c69", "#5770a6"), name = NULL) +  # 设置箱式图的边框颜色
+    scale_fill_manual(values = c("#ce5c69", "#5770a6"), name = NULL) +  # 设置散点的填充色
+    geom_signif(comparisons = comparisons_list, test = "wilcox.test", map_signif_level = TRUE) +  # 添加多个组的比较
+    facet_wrap(~ datasetID, scales = "free_y")  # 按 datasetID 分面，y轴自由缩放
+  
+  ggsave(filename = paste0('sampletype/', datasetID, '.pdf'), width = 6 ,height = 6, units = 'in')
+}
+
+
+#########################################
+##################Figure 2E##############
+#########################################
 # filtered_data 是一个数据框，包含基因名称
 genes_to_plot <- filtered_data$gene
 
@@ -589,6 +789,7 @@ sorted_genes <- unique(percent_expression$gene)
 
 sorted_genes <- sub('^\\percent_','',sorted_genes)
 
+###Dotplot function
 custom_dotplot <- function(
     object, 
     features, 
@@ -824,6 +1025,7 @@ custom_dotplot <- function(
   return(plot)
 }
 
+ ##Dotplot              
 custom_dotplot(seurat.harmony, features = rev(sorted_genes),group.by = 'sampletype',
                assay = 'RNA',scale.min=0.01,dot.limits=c(0.01,75)) + 
   coord_flip() +  # 翻转
