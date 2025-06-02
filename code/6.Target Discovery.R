@@ -345,52 +345,15 @@ Heatmap(cor_ihc[,-3],  # 不包含 NE 列
         row_gap = unit(5, "mm"),  # 调整行分割的宽度
         column_gap = unit(3, "mm"),
         heatmap_legend_param = list(title = "IHC-score", title_gp = gpar(fontsize = 12, fontface = "bold")))
+
+
 #########################################
-##################Figure 8J#############
+##################Figure 8I#############
 #########################################
-cellline <- read.csv("cor_pseudotime.csv")
+#see the code’4.Survival analysis.R‘
+#see the code’4.Survival analysis.R‘  
+cli <- read.csv('cli.csv')
 
-# 加载必要的库
-library(ggplot2)
-cellline$group
-# 创建 KEGG 富集条形图
-cellline$pathway <- factor(cellline$pathway, levels = rev(cellline$pathway))
-
-
-# 加载必要的库
-library(ggplot2)
-
-# 创建条形图，按 group 分组
-ggplot(data = cellline, 
-       aes(x = -log10(p), y = pathway, fill = cor, group = interaction(group, pathway))) +
-  geom_bar(stat = 'identity', 
-           position = position_dodge(width = 0.8),  # 通过 position_dodge 按照 group 分组
-           width = 0.5) +  # 柱子宽度调整
-  theme_classic() +
-  labs(x = "-log10(FDR)",  # X 轴标签
-       y = "pathway",             # Y 轴标签
-       fill = "Spearman correlation") +  # 图例标题
-  scale_fill_gradient2(low = "#5770a6", mid = "white", high = "#ce5c69", midpoint = 0)  + 
-  scale_x_continuous(expand = c(0,0))+
-  theme(axis.text.y = element_blank()) + #去掉y轴标签
-  geom_text(data = cellline,
-            aes(x = 0.1, #用数值向量控制文本标签起始位置
-                y= pathway, 
-                label= pathway),
-            size= 4.5,
-            hjust= 0)  +
-  geom_text(data = cellline,
-            aes(x = 0.1, y = pathway, label = group, color = group),
-            size= 4,
-            fontface= 'italic', #geneID斜体
-            hjust= 0,
-            vjust= 2.3) +
-  theme(
-    legend.position = 'right',
-    plot.title = element_text(size = 20, face = 'bold'),
-    axis.title = element_text(size = 20),
-    axis.text = element_text(size = 16),
-    axis.ticks.y = element_blank())
 #########################################
 ##################Figure 8K#############
 #########################################
