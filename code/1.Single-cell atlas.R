@@ -568,7 +568,7 @@ score.res <- Cal_score(seurat.harmony=seurat.harmony,genesets=genesets)
 score.res <- seurat.harmony@meta.data
 
 #####################celltype
-celltype_values <- unique(score.res$celltype12)
+celltype_values <- unique(score.res$celltype)
 result_matrix <- matrix(NA, nrow = length(celltype_values), ncol =29)
 rownames(result_matrix) <- celltype_values
 for (i in 1:29) {
