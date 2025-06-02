@@ -111,63 +111,6 @@ for (i in seq_along(folders)) {
   saveRDS(allcell.qc3, paste0(root_directory,sampleID,'.rds'))
 }
 
-####################annotation##################
-
-folder_path <- "G:/importance/undergraduated/数据集整理/single cell/暂存/"
-file_list.path <- list.files(path = folder_path, pattern = "\\.rds$", full.names = T)
-
-sampletype <- read.csv('G:/importance/undergraduated/数据集整理/single cell/暂存/sampletype.csv')
-
-for (i in 1:length(file_list.path)) {
-  print(i)
-  seurat.data <- read_rds(file_list.path[i])
-  seurat.data@assays$RNA$data <-  NULL
-  seurat.data@assays$RNA$scale.data <-  NULL
-  names(seurat.data@meta.data)[1] <-'datasetsID'
-  seurat.data@meta.data$sampletype <- sampletype$sampletype[match(seurat.data@meta.data$sampleID, sampletype$sampleID)]
-  saveRDS(seurat.data, file_list.path[i])
-  rm(seurat.data);gc()
-}
-
-for (i in 1:length(file_list.path)) {
-  seurat.data <- read_rds(file_list.path[1])
-  seurat.data@meta.data[["sampletype"]] <-'Primary'
-  saveRDS(seurat.data, file_list.path[1])
-  rm(seurat.data);gc()
-}
-
-table(allcell@meta.data[["orig.ident"]])
-
-allcell@meta.data$sampleID <- sub("-.*", "", allcell@meta.data[["orig.ident"]])
-allcell@meta.data$sampletype <- ifelse(grepl("TP3", allcell@meta.data[["orig.ident"]]), "early",
-                                       ifelse(grepl("TP4|TP5", allcell@meta.data[["orig.ident"]]), "transition",
-                                              ifelse(grepl("TP6", allcell@meta.data[["orig.ident"]]), "endpoint", NA)))
-
-
-for (i in 1:16) {
-  count.data <- GetAssayData(object =GSE215943 , slot = "counts")
-  seurat.data@meta.data[["sampletype"]] <-'Primary'
-  saveRDS(seurat.data, file_list.path[1])
-  
-}
-
-library("biomaRt")
-mouse <- useEnsembl(biomart = "genes", dataset = "mmusculus_gene_ensembl", mirror = "useast")
-human <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl", mirror = "useast")
-
-convertHumanGeneList <- function(x){
-  genesV2 = getLDS(attributes = c("hgnc_symbol"), filters = "hgnc_symbol", values = x , mart = human, attributesL = c("mgi_symbol"), martL = mouse, uniqueRows=T)
-  humanx <- unique(genesV2[, 2])
-  return(humanx)
-}
-
-GSE215943@meta.data <- GSE215943@meta.data %>% 
-  mutate(celltype = case_when(
-    sampleID == 'GSM6647951' ~ 'DMSO',
-    sampleID == 'GSM6647952' ~ 'ENZ_D4',
-    sampleID == 'GSM6647953' ~ 'ENZ_D7',
-    sampleID == 'GSM6647954' ~ 'ENZ_D14'
-  ))
 ##################Combination of multiple samples################
 # 读入和处理每个样本的数据
 library(Seurat)
@@ -193,7 +136,7 @@ nbrOfWorkers()
 plan("multisession", workers = 1)
 options(future.globals.maxSize = 40 * 1024^3)
 
-folder_path <- "G:/importance/undergraduated/数据集整理/single cell/allsample"
+folder_path <- "./allsample"
 file_list.path <- list.files(path = folder_path, pattern = "\\.rds$", full.names = T)
 file_list.name <- list.files(path = folder_path, pattern = "\\.rds$", full.names = F)
 file_ids <- sub("\\.rds$", "", file_list.name)
@@ -579,7 +522,7 @@ VlnPlot(seurat.harmony,features=reversed_features,
 
 
 #####################Calculate the score of the gene set：AddModuleScore###########
-genesets <- read.csv('G:/importance/undergraduated/数据集整理/genesets.csv')
+genesets <- read.csv('genesets.csv')
 saveRDS(genelist,'genelist.rds')
 
 Cal_score <- function(seurat.harmony=seurat.harmony,genesets=genesets,ctrl = 100,seed=520){
@@ -676,7 +619,7 @@ ggviolin(seurat.harmony@meta.data, x="celltype", y=geneSet, width = 1,
 )+ theme(
   axis.text.x = element_text(size = 20, angle = 45, hjust = 1),  # x轴标签设置
   axis.text.y = element_text(size = 20))  # y轴标签设置
-ggsave(filename = paste0('AUCell/', geneSet, '.pdf'), width = 6, height = 6, units = 'in')
+ggsave(filename = paste0(geneSet, '.pdf'), width = 6, height = 6, units = 'in')
 }
 #########################################
 ##################Figure 2D##############
