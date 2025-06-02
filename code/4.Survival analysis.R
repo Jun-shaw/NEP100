@@ -11,39 +11,14 @@ library(ggsurvfit)
 library(patchwork)
 library(ggpp)
 
-dataset.path <- 'G:/importance/undergraduated/数据集整理/bulk data（clinical）/'
-PCaProfilter <- read.csv(paste0(dataset.path,'NEPC/PCaProfilter/PCaProfilter_matrix.csv'))
-SU2C <- read_rds(paste0(dataset.path,'NEPC/SU2C/SU2C.rds'))
-SU2C.expr <- read.csv(paste0(dataset.path,'NEPC/SU2C/SU2C.csv'),row.names = 1)
-WCDT <-  read_rds(paste0(dataset.path,'NEPC/WCDT/WCDT.rds'))
-WCDT.expr <- read.csv(paste0(dataset.path,'NEPC/WCDT/WCDT.csv'),row.names = 1)
-WCM <-  read.csv(paste0(dataset.path,'NEPC/WCM/WCM.csv'))
-UWRA <-  read.csv(paste0(dataset.path,'NEPC/UWRA/UWRA-CRPC.csv'),row.names = 1)
-MDA <-  read.csv(paste0(dataset.path,'NEPC/MDA/MDA.csv'))
-MSKCC <-  read.csv(paste0(dataset.path,'ARPC/MSKCC/MSKCC.csv'))
-PRAD <-  read.csv(paste0(dataset.path,'ARPC/TCGA-PRAD/TCGA-PRAD2.csv'))
-MCTP <-  read.csv(paste0(dataset.path,'ARPC/MCTP/MCTP.csv'))
-CamCap<-  read.csv(paste0(dataset.path,'ARPC/CamCap/CamCap_tumor.csv'))
+prog.data.list <- readRDS('prog.data.list.rds')
+df <- prog.data.list[[1]]
 
-CPGEA <-  read.csv(paste0(dataset.path,'ARPC/CPGEA/CPGEA.csv'))
-GSE54460 <-  read.csv(paste0(dataset.path,'ARPC/GSE54460/GSE54460.csv'))
-GSE197780<-  read.csv(paste0(dataset.path,'ARPC/GSE197780/GSE197780.csv'))
-GSE32571 <-  read.csv(paste0(dataset.path,'ARPC/GSE32571/GSE32571.csv'))
-GSE134051<-  read.csv(paste0(dataset.path,'ARPC/GSE134051/GSE134051.csv'))
-GSE199596<-  read.csv(paste0(dataset.path,'NEPC/GSE199596/GSE199596.csv'))
-GSE211856 <- read.csv("G:/importance/undergraduated/数据集整理/mice model/GSE211856/GSE211856.csv")
-GSE79021<-  read.csv(paste0(dataset.path,'ARPC/GSE79021/GSE79021.csv'))
-GSE84042 <- read.csv("G:/importance/undergraduated/数据集整理/bulk data（clinical）/ARPC/GSE84042/GSE84042.csv")
-data.list <- list(`SU2C-2019`=SU2C.expr,`WCDT-MCRPC`=WCDT,WCM=WCM,`UWRA-CRPC`=UWRA,MDA=MDA,MCTP=MCTP,
-                  MSKCC=MSKCC,TCGA=PRAD,CamCap=CamCap,CPGEA=CPGEA,GSE54460=GSE54460,GSE197780=GSE197780,
-                  GSE32571=GSE32571,GSE134051=GSE134051,GSE199596=GSE199596,GSE211856=GSE211856,
-                  GSE79021=GSE79021,GSE84042=GSE84042)
-
-saveRDS(data.list,'data.list.rds')
+expr<- df[,-c(1:3)]
 new <- NEP100(expr,type='bulk',layer='data',species = 'homo')
 new$ID <- row.names(ID)
 
-cli <- read.csv('NEPC/PCaProfilter/cli.csv')
+cli <- df[,1:3]
 cli <- cli[,colnames(cli)%in%c('ID','OS.time','OS')]
 colnames(cli)  <- c('ID','OS','OS.time')
 cli$ID <- gsub("-", ".", cli$ID)
@@ -65,8 +40,37 @@ df$OS <- as.numeric(df$OS)
 res.cut <- surv_cutpoint(df,time = "OS.time", event = "OS",variables = 'VR-NE')
 cutoff <- res.cut$cutpoint$cutpoint
 df$group <- ifelse(df$VR.NE >=1, "High", "Low") %>% factor(levels = c("Low","High"))
+#########################################
+##################Figure 5A##############
+#########################################
+###########premodel
+res <- EZGen::create_model(prog.data.list=prog.data.list,
+                           train.data.pos=1,
+                           gene.list=NEP100,
+                           unicox_pcutoff=0.1,
+                           top.num = 100,
+                           method='out_RSF',#c('all','out_RSF')
+                           hm.col=c("#5770A6", "#FFFFFF", "#CE5C69"),
+                           cohort.col=c('#b30c2a','#ce5c69','#e0a980','#f4c889','#bdd5a3','#519981','#8ba1c6','#5770a6','#a281b1'))
+write.csv(res,'out_Cindex.csv')
 
-###########################cox回归
+###########presig
+folder_path <- './data'
+file_list <- list.files(path = folder_path, pattern = "\\.csv$", full.names = T)
+file_ID<- list.files(path = folder_path, pattern = "\\.csv$", full.names = F)
+c_index.list <- list()
+for (i in seq_along(file_list)) {
+  df <- read.csv(file_list[i],row.names = 1)
+  fit <- coxph(Surv(OS.time,OS)~NEP100,data=df)
+  sum.surv <- summary(fit)
+  c_index <-sum.surv$concordance
+  c_index.list[[i]] <- c_index
+  names(c_index.list)[i] <- file_ID[i]
+}
+saveRDS(c_index.list,'presig.rds')
+#########################################
+##################Figure 5B##############
+#########################################
 fit <- survfit(Surv(OS.time, OS)~group,
                data= df)
 ggsurvplot(fit, conf.int=F, pval=TRUE,risk.table = F,)
@@ -108,7 +112,13 @@ y<- Surv(time=df$OS.time,event=df$OS==1)#1为事件发生
 Camcap.COX <- unicox(df=df,ncol=6)
 Camcap.COX
 
-###################KM曲线##################################
+unicox.rs.res <- read.csv('ALL_cox.csv',row.names = 1)
+metamodel <- Mime1::cal_unicox_meta_ml_res(input = unicox.rs.res)
+Mime1::meta_unicox_vis(metamodel,
+                       dataset = names(prog.data.list))
+#########################################
+##################Figure 5C##############
+#########################################
 
 max(df$OS.time)
 survfit2(Surv(OS.time, OS) ~ group, data = df) %>%
@@ -154,41 +164,15 @@ survfit2(Surv(OS.time, OS) ~ group, data = df) %>%
         legend.position = c(0.8,0.8),
         panel.border = element_rect(size = 2, color = "black", fill = NA))
 ggsave(file = "Nature Medicine.pdf", width = 10, height = 6, device = cairo_pdf)
-###################预后预测模型####################
-###########premodel
-prog.data.list <- readRDS("G:/importance/undergraduated/数据集整理/bulk data（clinical）/prog.data.list.rds")
 
-res <- EZGen::create_model(prog.data.list=prog.data.list,
-                           train.data.pos=1,
-                           gene.list=NEP100,
-                           unicox_pcutoff=0.1,
-                           top.num = 100,
-                           method='out_RSF',#c('all','out_RSF')
-                           hm.col=c("#5770A6", "#FFFFFF", "#CE5C69"),
-                           cohort.col=c('#b30c2a','#ce5c69','#e0a980','#f4c889','#bdd5a3','#519981','#8ba1c6','#5770a6','#a281b1'))
-write.csv(res,'premodel.csv')
-
-###########presig
-folder_path <- 'G:/importance/undergraduated/2_CRPC/第二版/预后/data/'
-file_list <- list.files(path = folder_path, pattern = "\\.csv$", full.names = T)
-file_ID<- list.files(path = folder_path, pattern = "\\.csv$", full.names = F)
-c_index.list <- list()
-for (i in seq_along(file_list)) {
-  df <- read.csv(file_list[i],row.names = 1)
-  fit <- coxph(Surv(OS.time,OS)~NEP100,data=df)
-  sum.surv <- summary(fit)
-  c_index <-sum.surv$concordance
-  c_index.list[[i]] <- c_index
-  names(c_index.list)[i] <- file_ID[i]
-}
-saveRDS(c_index.list,'presig.rds')
-###################meta#########
-unicox.rs.res <- read.csv('ALL_cox.csv',row.names = 1)
-metamodel <- Mime1::cal_unicox_meta_ml_res(input = unicox.rs.res)
-Mime1::meta_unicox_vis(metamodel,
-                       dataset = names(prog.data.list))
-
-###################相关性分析##############
+#########################################
+##################Figure D-E##############
+#########################################
+#see the code’1.Single-cell atlas.R‘
+#see the code’1.Single-cell atlas.R‘    
+#########################################
+##################Figure 5F##############
+#########################################
 library(IOBR)
 library(correlation) #install.packages('correlation')
 library(ggplot2)
