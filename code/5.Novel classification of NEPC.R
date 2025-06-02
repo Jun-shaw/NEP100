@@ -634,8 +634,6 @@ rs2 <- IOBR::calculate_sig_score(pdata           = NULL,
                                  method          = "ssgsea",
                                  mini_gene_count = 0)
 
-write.csv(rs2,'rs2.csv')
-
 unlist(sig_group)
 
 rs2 <- as.data.frame(rs2)
@@ -762,7 +760,7 @@ report_pc=FALSEcc=FALSE
 rsq=FALSE
 percent=80
 
-expr <- read.csv("D:/下载/WeChat Files/wxid_4tmvpn3qli1m22/FileStorage/File/2025-05/geneMatrix.csv",row.names = 1)
+expr <- read.csv("NE.csv",row.names = 1)
 expr <- as.matrix(expr)
 #计算并自动输出
 max-ppsize=500000
