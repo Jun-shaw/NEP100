@@ -1,5 +1,7 @@
-##################建模####################
-##############函数
+#########################################
+##################Figure 4A-1##############
+#########################################
+##############function
 cal_sig <- function (train_data, list_train_vali_Data, candidate_genes = NULL, 
                      methods = NULL, seed = 5201314, cores_for_parallel = 12) 
 {
@@ -222,6 +224,8 @@ cal_sig <- function (train_data, list_train_vali_Data, candidate_genes = NULL,
   }
 }
 
+list_train_vali_Data <- readRDS('list_train_vali_Data.rds')
+
 res.ici <- cal_sig(train_data = list_train_vali_Data[[1]],
                    list_train_vali_Data = list_train_vali_Data,
                    candidate_genes = genelist,
@@ -230,11 +234,10 @@ res.ici <- cal_sig(train_data = list_train_vali_Data[[1]],
                    cores_for_parallel = 4)
 auc_vis_category_all(model.res,dataset = names(list_train_vali_Data),
                      order= names(list_train_vali_Data))
-saveRDS(res.ici,'model.res.rds')
 
-
-
-################ 重要性plot ################
+#########################################
+##################Figure 4B##############
+#########################################
 imp <- model.res[["model"]][["rf"]][["finalModel"]][["importance"]]
 imp <- as.data.frame(imp)
 
@@ -320,7 +323,9 @@ ggplot(data = imp, aes(x = importance, y = reorder(feature, importance))) +
         axis.title = element_blank(),
         legend.position = "none",
         axis.text.x = element_text(face = "bold", size = rel(1), color = "black"))
-#################NEP100###############
+#########################################
+##################Figure 4C##############
+#########################################
 NEP100 <- function(data=SU2C,type='bulk',assay="RNA",layer='data',species='homo'){
   library(Seurat)
   library(ggpubr)
@@ -453,12 +458,11 @@ NEP100 <- function(data=SU2C,type='bulk',assay="RNA",layer='data',species='homo'
   else{print('type choose single or bulk')}
   
 }
-###############NEP100跟先前对比#############
+###############other model#############
 library(Mime1)
 imp <- read.csv('importance.csv')
-list_train_vali_Data <- readRDS('G:/importance/undergraduated/数据集整理/bulk data（clinical）/list_train_vali_Data.rds')
-other.res <- cal_other_sig(list_train_vali_Data = list_train_vali_Data,imp=imp)
-saveRDS(other.res,'other.res.rds')
+list_train_vali_Data <- readRDS('list_train_vali_Data.rds')
+other.res <- Mime1::cal_other_sig(list_train_vali_Data = list_train_vali_Data,imp=imp)
 
 data_list <- lapply(other.res$auc.list.up, function(x) {
   if (is.matrix(x) && ncol(x) == 1) {
@@ -493,7 +497,9 @@ cindex[cindex < 0.5] <- 1 - cindex[cindex < 0.5]
 cindex <- as.data.frame(cindex)
 write.csv(cindex,'other.cindex.csv')
 
-################ AUC热图 ################
+#########################################
+##################Figure 4A-2##############
+#########################################
 cindex <- read.csv('model.cindex.csv',row.names = 1)
 cohort.levels <- colnames(cindex)
 
@@ -551,11 +557,11 @@ pdf(file.path(file.name), width = cellwidth * ncol(Cindex_mat) + 5, height = cel
 draw(hm)
 invisible(dev.off())
 
+##################Validation#############
 
-
-##################验证#############
-##########单细胞
-
+#########################################
+##################Figure 4D-F########################single-cell
+#########################################
 new <- NEP100(GSE206962,type='single',layer='data',species = 'homo')
 new.PN <- subset(new, subset = celltype %in% c('Luminal', 'NE'))
 ggplot(new.PN@meta.data, aes(x =celltype, y = NEP100)) +
@@ -577,7 +583,10 @@ ggplot(new.PN@meta.data, aes(x =celltype, y = NEP100)) +
   #scale_y_continuous(limits = c(-0.2, 0.3)) +
   geom_signif(comparisons = list(c('NE', 'Luminal')), test = "wilcox.test", map_signif_level = F,
               y_position = max(new.PN@meta.data$NEP100))
-#########bulk
+
+#########################################
+##################Figure G-H#######################bulk
+#########################################
 new <- NEP100(expr,type='bulk',species = 'homo')
 new$ID <- row.names(new)
 new.PN <- left_join(new,group,by='ID')
@@ -602,15 +611,17 @@ ggplot(new.PN, aes(x =group, y = NEP100)) +
   geom_signif(comparisons = list(c('NEPC', 'ARPC')), test = "wilcox.test", map_signif_level = F,
               y_position = max(new.PN$NEP100))
 
-#######spaital
-expr.data <- Seurat::Read10X("G:\\importance\\undergraduated\\数据集整理\\single cell\\GSE230282\\GSE230282" )
+
+#########################################
+##################Figure 4I#####################spaital
+#########################################
+expr.data <- Seurat::Read10X("./GSE230282/filtered_feature_bc_matrix/" )
 seurat <- Seurat::CreateSeuratObject(counts = expr.data, project = 'GSE230282', assay = 'RNA')
 seurat$slice <- 1
 seurat$region <- 'anterior'
 
-##标准化
 seurat <- SCTransform(seurat)
-img <- Seurat::Read10X_Image(image.dir = "G:/importance/undergraduated/数据集整理/single cell/GSE230282/img/")
+img <- Seurat::Read10X_Image(image.dir = "./spatial/")
 Seurat::DefaultAssay(object = img) <- 'Spatial'
 img <- img[colnames(x = seurat)]
 seurat[['image']] <- img
