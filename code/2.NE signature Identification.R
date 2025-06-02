@@ -1,4 +1,4 @@
-######################bulk DEGs####################
+######################bulk####################
 library(dplyr)
 library(ImageGP)
 library(ggplot2)
@@ -14,142 +14,83 @@ matrix <- as.data.frame(matrix)
 row.names(matrix) <- matrix[,1]
 matrix <-matrix[,-1]
 
-group <- read.csv('clinical.csv')
-#crpc vs cspc
-table(group$PC.type)
+group <- read.csv('PCaProfilter_clinical.csv')
+row.names(group) <- group$ID
 
-crpc_row_names <- group$ID[group$PC.type=='CRPC']
-cspc_row_names <- group$ID[group$PC.type=='PRIMARY']
+#########################################
+##################Figure 3A##############
+#########################################
+library(ggplot2)
 
-CRPC.matrix <- matrix[,crpc_row_names]
-CSPC.matrix <- matrix[,cspc_row_names]
+sample <- c("CSPC", "ARPC","DNPC",'NEPC')
+number <- c(709, 428,22,34)
+samplenumber <- data.frame(sample, number)
 
-expr <- cbind(CRPC.matrix,CSPC.matrix)
-write.csv(expr,'CRPC_vs_primary_matrix.csv')
+pdf(file="Figure_3A.pdf",width = 5,height = 8)
+ggplot(samplenumber, aes(x = sample, y = number, fill = sample)) +
+  geom_bar(stat = "identity",width = 0.4,show.legend = FALSE) +
+  geom_text(aes(label = number), vjust = -0.5, color = "black", size = 4) +
+  xlab("") +
+  ylab("Sample Number") +
+  ggtitle("")
+dev.off()
 
+#########################################
+##################Figure 3B-C##############
+#########################################
 
-#差异分析
-EZGen:filter_DEGs(expr.data ='CRPC_vs_primary_matrix.csv',
-                  data.type ='mRNA',
-                  deg.method='DESeq2',
-                  Pvalue    =0.05,
-                  log2FC    =1,
-                  TCGA      =F,
-                  tumor.num =484,
-                  normal.num=708,
-                  color1    ='#CE5C69',
-                  color2    ='#5770A6',
-                  title     ='PCaProfilter Bulk RNA-seq CRPC vs primary',
-                  key.genes =NA)
+THEnt <- function(expr) {
+  # 确保输入是数值型数据
+  if (!is.data.frame(expr) && !is.matrix(expr)) {
+    stop("Input must be a data frame or matrix.")
+  }
+  # 计算每列表达量的比例
+  total <- colSums(expr, na.rm = TRUE)
+  # 避免除以零
+  total[total == 0] <- 1
+  # 计算每列的表达量比例
+  p <- data.frame(matrix(nrow = nrow(expr), ncol = ncol(expr)))
+  colnames(p) <- colnames(expr)
+  row.names(p) <- row.names(expr)
+  for (i in seq_along(colnames(expr))) {
+    print(i)
+    p[,i] = expr[,i]/total[i]
+  }
+  # 计算信息熵
+  entropy <- colSums(-(p * log2(p)), na.rm = TRUE) 
+  # 将结果转换为数据框并返回
+  entropy_df <- as.data.frame(entropy)
+  colnames(entropy_df) <- "THEnt"  # 给熵列命名
+  return(entropy_df)
+}
 
-#对角线出图
+gp <- group[,c('ID','Molecular.Type')]
+gp <- subset(gp,gp$Molecular.Type%in%c('PRIMARY','ARPC','DNPC','NEPC'))
 
-CRPC.matrix$CRPC <- rowMeans(CRPC.matrix, na.rm = TRUE) 
-CSPC.matrix$Primary <- rowMeans(CSPC.matrix, na.rm = TRUE) 
+matrix2 <- matrix[,gp$ID]
+rs <-THEnt(matrix2)
+rs$ID <- row.names(rs)
 
-CRPC.matrix <- tibble::rownames_to_column(CRPC.matrix, var = "Gene_symbol")
-CSPC.matrix <- tibble::rownames_to_column(CSPC.matrix, var = "Gene_symbol")
+df <- left_join(rs,df,by='ID')
 
-merged_result <- my_result %>%
-  left_join(select(CRPC.matrix, Gene_symbol, CRPC), by = "Gene_symbol")
-merged_result <- merged_result %>%
-  left_join(select(CSPC.matrix, Gene_symbol, Primary), by = "Gene_symbol")
-write.csv(merged_result,'mRNA_deseq2.csv')
-
-diffexpr <- read.csv("mRNA_deseq2.CSV",header = T)
-diffexpr$CRPC<- log2(diffexpr$CRPC+1)#对平均值进行标准化
-diffexpr$Primary<- log2(diffexpr$Primary+1)#对平均值进行标准化
-diffexpr$level <- ifelse(diffexpr$padj<0.05, 
-                         ifelse(diffexpr$log2FoldChange>=1, "Up", 
-                                ifelse(diffexpr$log2FoldChange<=-1, "Down", "NoSig")),"NoSig")#标记差异基因
-head(diffexpr)
-p <- sp_scatterplot(diffexpr, xvariable = "CRPC", yvariable = "Primary", #定义横纵坐标变量，用的是前面计算的样本平均值
-                    color_variable = "level",#颜色以分组定义
-                    title ="PCaProfilter Bulk RNA-seq CRPC vs primary", #标题
-                    color_variable_order = c("NoSig","Up", "Down"),
-                    manual_color_vector = c("grey","#CE5C69","#5770A6")) + #颜色定义
-  coord_fixed(1)+ labs(x = "CRPC", y = "Primary")+ theme(plot.title = element_text(hjust = 0.5))+theme(text = element_text(size = 10))
-p
-diffexpr$label =""
-diffexpr <- diffexpr[order(diffexpr$padj),]
-up.genes <- head(diffexpr$Gene_symbol[which(diffexpr$level=="Up")],3)
-down.genes <- head(diffexpr$Gene_symbol[which(diffexpr$level=="Down")],3)
-top10genes <- c(as.character(up.genes), as.character(down.genes))
-diffexpr$label[match(top10genes,diffexpr$Gene_symbol)] <- top10genes
-p + geom_text_repel(data = diffexpr, aes(label = label), color = "black", size = 4, fontface = "italic",
-                    box.padding = 0.5, point.padding = 0.5, segment.color = 'black', segment.size = 0.3,
-                    force = 1, max.iter = 1, min.segment.length = 0.5)
-
-
-
-
-
-#NEPC vs ARPC
-NEPC_row_names <- group$ID[group$Molecular.Type=='NEPC']
-ARPC_row_names <- group$ID[group$Molecular.Type=='ARPC']
-
-NEPC.matrix <- matrix[,NEPC_row_names]
-ARPC.matrix <- matrix[,ARPC_row_names]
-
-expr <- cbind(NEPC.matrix,ARPC.matrix)
-write.csv(expr,'NEPC_vs_ARPC_matrix.csv')
-
-#差异分析
-EZGen:filter_DEGs(expr.data ='NEPC_vs_ARPC_matrix.csv',
-                  data.type ='mRNA',
-                  deg.method='DESeq2',
-                  Pvalue    =0.05,
-                  log2FC    =1,
-                  TCGA      =F,
-                  tumor.num =34,
-                  normal.num=428,
-                  color1    ='#CE5C69',
-                  color2    ='#5770A6',
-                  title     ='PCaProfilter Bulk RNA-seq NEPC vs ARPC',
-                  key.genes =NA)
-
-#对角线出图
-
-NEPC.matrix$NEPC <- rowMeans(NEPC.matrix, na.rm = TRUE) 
-ARPC.matrix$ARPC <- rowMeans(ARPC.matrix, na.rm = TRUE) 
-
-NEPC.matrix <- tibble::rownames_to_column(NEPC.matrix, var = "Gene_symbol")
-ARPC.matrix <- tibble::rownames_to_column(ARPC.matrix, var = "Gene_symbol")
-my_result <- read.csv("mRNA_deseq2.CSV",header = T)
-
-merged_result <- my_result %>%
-  left_join(select(NEPC.matrix, Gene_symbol, NEPC), by = "Gene_symbol")
-merged_result <- merged_result %>%
-  left_join(select(ARPC.matrix, Gene_symbol, ARPC), by = "Gene_symbol")
-
-write.csv(merged_result,'mRNA_deseq2.csv')
-
-diffexpr <- read.csv("mRNA_deseq2.CSV",header = T)
-diffexpr$NEPC<- log2(diffexpr$NEPC+1)#对平均值进行标准化
-diffexpr$ARPC<- log2(diffexpr$ARPC+1)#对平均值进行标准化
-diffexpr$level <- ifelse(diffexpr$padj<0.05, 
-                         ifelse(diffexpr$log2FoldChange>=1, "Up", 
-                                ifelse(diffexpr$log2FoldChange<=-1, "Down", "NoSig")),"NoSig")#标记差异基因
-head(diffexpr)
-p <- sp_scatterplot(diffexpr, xvariable = "NEPC", yvariable = "ARPC", #定义横纵坐标变量，用的是前面计算的样本平均值
-                    color_variable = "level",#颜色以分组定义
-                    title ="PCaProfilter Bulk RNA-seq NEPC vs ARPC", #标题
-                    color_variable_order = c("NoSig","Up", "Down"),
-                    manual_color_vector = c("grey","#CE5C69","#5770A6")) + #颜色定义
-  coord_fixed(1)+ labs(x = "ARPC", y = "ARPC")+ theme(plot.title = element_text(hjust = 0.5))+theme(text = element_text(size = 10))
-p
-diffexpr$label =""
-diffexpr <- diffexpr[order(diffexpr$padj),]
-up.genes <- c('SYP','CHGA','AMIGO2')
-down.genes <- c('AR','KLK3','NKX3-1')
-top10genes <- c(as.character(up.genes), as.character(down.genes))
-diffexpr$label[match(top10genes,diffexpr$Gene_symbol)] <- top10genes
-p + geom_text_repel(data = diffexpr, aes(label = label), color = "black", size = 4, fontface = "italic",
-                    box.padding = 0.5, point.padding = 0.5, segment.color = 'black', segment.size = 0.3,
-                    force = 1, max.iter = 1, min.segment.length = 0.5)
-
+ ggplot(df, aes(x = Molecular.Type, y = THEnt)) +
+    geom_boxplot(outlier.size = 1.5, size = 1.2, aes(color = Molecular.Type), outlier.shape = NA) +  # 设置箱式图的边框颜色
+    theme_minimal(base_size = 16, base_family = "sans") + 
+    theme(
+      text = element_text(size = 16),  # 调整字体大小
+      axis.title = element_text(size = 24),  # 调整轴标题的大小
+      axis.text = element_text(size = 20,color = "black"), 
+      panel.grid.major = element_blank(),  # 去掉主网格线
+      panel.grid.minor = element_blank(),  # 去掉次网格线
+      axis.line = element_line(size = 0.5)  # 添加坐标轴线
+    ) +
+    labs(x = "", y = "THEnt") +
+    scale_color_manual(values = c('#ce5c69','#f4c889','#a281b1','#5770a6'), name = NULL) +  # 设置箱式图的边框颜色
+    scale_fill_manual(values = c('#ce5c69','#f4c889','#a281b1','#5770a6'), name = NULL) +  # 设置散点的填充色
+    geom_signif(comparisons = list(c('PRIMARY','ARPC'),c('PRIMARY','NEPC'),c('NEPC','ARPC')), test = "wilcox.test", map_signif_level = TRUE) 
 
 ######################WGCNA#######################################
+
 library(WGCNA)
 library(tidyverse)
 library(tinyarray)
@@ -166,7 +107,10 @@ mRNA_TPM_new <-expr
 mRNA_TPM_new <- read.csv("PCaProfilter_matrix.csv",row.names = 1)
 
 # 去批次效应
-group <- read.csv('clinical.csv')
+#########################################
+##################Figure 3D##############
+#########################################
+group <- read.csv('PCaProfilter_clinical.csv')
 group <- subset(group, PC.type %in% c('CRPC'))
 
 group$type <-  ifelse(group$Molecular.Type == "NEPC", "NE", "Luminal")
@@ -176,15 +120,14 @@ CRPC.matrix <- CRPC.matrix[rowMeans(CRPC.matrix) > 1, ]
 CRPC.matrix <- log2(CRPC.matrix+1)
 p1 <- draw_pca(exp = CRPC.matrix, group_list = factor(group$Dataset))
 p2 <- draw_pca(exp = CRPC.matrix, group_list = factor(group$type))
-
+p1|p2
 model <- model.matrix(~factor(group$type))
 expr_combat <- ComBat(dat  = CRPC.matrix, batch = group$Dataset,mod = model)
 
 p3 <- draw_pca(exp = expr_combat, group_list = factor(group$Dataset))
 p4 <- draw_pca(exp = expr_combat, group_list = factor(group$type))
 
-p1|p2
-p3|p4
+p3|p4 #Figure 3D
 expr_combat2 <- as.data.frame(expr_combat)
 
 boxplot(expr_combat2[,1:20],main="Non-normalized",las=2)
@@ -308,6 +251,10 @@ pdf(file="WGCNA.pdf",width = 8,height = 12)
 par(mar = c(5, 8, 4, 1))#Bottom margin、Left margin、Top margin、Right margin
 #labeledHeatmap用于创建带有标记的行和列的热图
 myColors <- colorRampPalette(c('#5770A6', 'white', '#CE5C69'))(100)
+#########################################
+##################Figure 3E##############
+#########################################
+
 labeledHeatmap(Matrix = moduleTraitCor,
                xLabels = names(datTraits),#临床信息文件列名
                yLabels = names(MEs),
@@ -325,13 +272,152 @@ labeledHeatmap(Matrix = moduleTraitCor,
                x.adj.lab.y = 1#指定x轴标签的垂直位置
 )
 dev.off()
-up.module <- c(3,7,8)
-down.module <- c(2,5)
+up.module <- c()
+down.module <- c()
 up_WGCNA <- colnames(datExpr)[moduleColors%in%up.module]
 down_WGCNA<- colnames(datExpr)[moduleColors%in%down.module]
 
 write.csv(up_WGCNA,'WCGNAupgenes.csv')
 write.csv(down_WGCNA,'WCGNAupgenes.csv')
+
+########################
+######CRPC vs CSPC######
+########################
+
+table(group$PC.type)
+
+crpc_row_names <- group$ID[group$PC.type=='CRPC']
+cspc_row_names <- group$ID[group$PC.type=='PRIMARY']
+
+CRPC.matrix <- matrix[,crpc_row_names]
+CSPC.matrix <- matrix[,cspc_row_names]
+
+expr <- cbind(CRPC.matrix,CSPC.matrix)
+write.csv(expr,'CRPC_vs_primary_matrix.csv')
+
+#devtools::install_github('https://github.com/Jun-shaw/EZGen.git')
+EZGen:filter_DEGs(expr.data ='CRPC_vs_primary_matrix.csv',
+                  data.type ='mRNA',
+                  deg.method='DESeq2',
+                  Pvalue    =0.05,
+                  log2FC    =1,
+                  TCGA      =F,
+                  tumor.num =484,
+                  normal.num=708,
+                  color1    ='#CE5C69',
+                  color2    ='#5770A6',
+                  title     ='PCaProfilter Bulk RNA-seq CRPC vs primary',
+                  key.genes =NA)
+
+#plot
+
+CRPC.matrix$CRPC <- rowMeans(CRPC.matrix, na.rm = TRUE) 
+CSPC.matrix$Primary <- rowMeans(CSPC.matrix, na.rm = TRUE) 
+
+CRPC.matrix <- tibble::rownames_to_column(CRPC.matrix, var = "Gene_symbol")
+CSPC.matrix <- tibble::rownames_to_column(CSPC.matrix, var = "Gene_symbol")
+
+merged_result <- my_result %>%
+  left_join(select(CRPC.matrix, Gene_symbol, CRPC), by = "Gene_symbol")
+merged_result <- merged_result %>%
+  left_join(select(CSPC.matrix, Gene_symbol, Primary), by = "Gene_symbol")
+write.csv(merged_result,'mRNA_deseq2.csv')
+
+diffexpr <- read.csv("mRNA_deseq2.CSV",header = T)
+diffexpr$CRPC<- log2(diffexpr$CRPC+1)#对平均值进行标准化
+diffexpr$Primary<- log2(diffexpr$Primary+1)#对平均值进行标准化
+diffexpr$level <- ifelse(diffexpr$padj<0.05, 
+                         ifelse(diffexpr$log2FoldChange>=1, "Up", 
+                                ifelse(diffexpr$log2FoldChange<=-1, "Down", "NoSig")),"NoSig")#标记差异基因
+head(diffexpr)
+
+p <- sp_scatterplot(diffexpr, xvariable = "CRPC", yvariable = "Primary", #定义横纵坐标变量，用的是前面计算的样本平均值
+                    color_variable = "level",#颜色以分组定义
+                    title ="PCaProfilter Bulk RNA-seq CRPC vs primary", #标题
+                    color_variable_order = c("NoSig","Up", "Down"),
+                    manual_color_vector = c("grey","#CE5C69","#5770A6")) + #颜色定义
+  coord_fixed(1)+ labs(x = "CRPC", y = "Primary")+ theme(plot.title = element_text(hjust = 0.5))+theme(text = element_text(size = 10))
+p
+diffexpr$label =""
+diffexpr <- diffexpr[order(diffexpr$padj),]
+up.genes <- head(diffexpr$Gene_symbol[which(diffexpr$level=="Up")],3)
+down.genes <- head(diffexpr$Gene_symbol[which(diffexpr$level=="Down")],3)
+top10genes <- c(as.character(up.genes), as.character(down.genes))
+diffexpr$label[match(top10genes,diffexpr$Gene_symbol)] <- top10genes
+p + geom_text_repel(data = diffexpr, aes(label = label), color = "black", size = 4, fontface = "italic",
+                    box.padding = 0.5, point.padding = 0.5, segment.color = 'black', segment.size = 0.3,
+                    force = 1, max.iter = 1, min.segment.length = 0.5)
+
+
+########################
+######NEPC vs ARPC######
+########################
+NEPC_row_names <- group$ID[group$Molecular.Type=='NEPC']
+ARPC_row_names <- group$ID[group$Molecular.Type=='ARPC']
+
+NEPC.matrix <- matrix[,NEPC_row_names]
+ARPC.matrix <- matrix[,ARPC_row_names]
+
+expr <- cbind(NEPC.matrix,ARPC.matrix)
+write.csv(expr,'NEPC_vs_ARPC_matrix.csv')
+
+#devtools::install_github('https://github.com/Jun-shaw/EZGen.git')
+EZGen:filter_DEGs(expr.data ='NEPC_vs_ARPC_matrix.csv',
+                  data.type ='mRNA',
+                  deg.method='DESeq2',
+                  Pvalue    =0.05,
+                  log2FC    =1,
+                  TCGA      =F,
+                  tumor.num =34,
+                  normal.num=428,
+                  color1    ='#CE5C69',
+                  color2    ='#5770A6',
+                  title     ='PCaProfilter Bulk RNA-seq NEPC vs ARPC',
+                  key.genes =NA)
+
+#对角线出图
+
+NEPC.matrix$NEPC <- rowMeans(NEPC.matrix, na.rm = TRUE) 
+ARPC.matrix$ARPC <- rowMeans(ARPC.matrix, na.rm = TRUE) 
+
+NEPC.matrix <- tibble::rownames_to_column(NEPC.matrix, var = "Gene_symbol")
+ARPC.matrix <- tibble::rownames_to_column(ARPC.matrix, var = "Gene_symbol")
+my_result <- read.csv("mRNA_deseq2.CSV",header = T)
+
+merged_result <- my_result %>%
+  left_join(select(NEPC.matrix, Gene_symbol, NEPC), by = "Gene_symbol")
+merged_result <- merged_result %>%
+  left_join(select(ARPC.matrix, Gene_symbol, ARPC), by = "Gene_symbol")
+
+write.csv(merged_result,'mRNA_deseq2.csv')
+
+diffexpr <- read.csv("mRNA_deseq2.CSV",header = T)
+diffexpr$NEPC<- log2(diffexpr$NEPC+1)#对平均值进行标准化
+diffexpr$ARPC<- log2(diffexpr$ARPC+1)#对平均值进行标准化
+diffexpr$level <- ifelse(diffexpr$padj<0.05, 
+                         ifelse(diffexpr$log2FoldChange>=1, "Up", 
+                                ifelse(diffexpr$log2FoldChange<=-1, "Down", "NoSig")),"NoSig")#标记差异基因
+#########################################
+##################Figure 3G##############
+#########################################
+p <- sp_scatterplot(diffexpr, xvariable = "NEPC", yvariable = "ARPC", #定义横纵坐标变量，用的是前面计算的样本平均值
+                    color_variable = "level",#颜色以分组定义
+                    title ="PCaProfilter Bulk RNA-seq NEPC vs ARPC", #标题
+                    color_variable_order = c("NoSig","Up", "Down"),
+                    manual_color_vector = c("grey","#CE5C69","#5770A6")) + #颜色定义
+  coord_fixed(1)+ labs(x = "ARPC", y = "ARPC")+ theme(plot.title = element_text(hjust = 0.5))+theme(text = element_text(size = 10))
+p
+diffexpr$label =""
+diffexpr <- diffexpr[order(diffexpr$padj),]
+up.genes <- c('SYP','CHGA','AMIGO2')
+down.genes <- c('AR','KLK3','NKX3-1')
+top10genes <- c(as.character(up.genes), as.character(down.genes))
+diffexpr$label[match(top10genes,diffexpr$Gene_symbol)] <- top10genes
+p + geom_text_repel(data = diffexpr, aes(label = label), color = "black", size = 4, fontface = "italic",
+                    box.padding = 0.5, point.padding = 0.5, segment.color = 'black', segment.size = 0.3,
+                    force = 1, max.iter = 1, min.segment.length = 0.5)
+
+
 
 ######################findmarker##################
 seurat.harmony <- readRDS(seurat.harmony)
@@ -343,7 +429,7 @@ NE.markers2 <- FindMarkers(seurat.harmony, ident.1 = "NE",logfc.threshold = 0.5)
 write.csv(NE.markers2,'FindMarkers_DEG(NE VS ALL).csv')
 
 
-######################伪bulk###################
+######################Pseudobulk###################
 bs = split(colnames(seurat.harmony),seurat.harmony@meta.data$sampleID)
 ct = do.call(
   cbind,lapply(names(bs), function(x){ 
@@ -388,11 +474,11 @@ DEG_deseq2 = na.omit(DEG)
 write.csv(DEG_deseq2,'Pseudobulk_DEGs.csv')
 ######################vene#################################
 
-CRPC_Primary <- read.csv('CRPC vs primary/mRNA_DEGs.csv')
+CRPC_Primary <- read.csv('CRPC_vs_primary_DEGs.csv')
 up_CRPC_Primary <- CRPC_Primary$Gene_symbol[CRPC_Primary$regulate=='up-regulated']
 down_CRPC_Primary <- CRPC_Primary$Gene_symbol[CRPC_Primary$regulate=='down-regulated']
 
-NEPC_ARPC <- read.csv('NEPC vs ARPC/mRNA_DEGs.csv')
+NEPC_ARPC <- read.csv('NEPC_vs_ARPC_DEGs.csv')
 
 up_NEPC_ARPC <- NEPC_ARPC$Gene_symbol[NEPC_ARPC$regulate=='up-regulated']
 down_NEPC_ARPC <- NEPC_ARPC$Gene_symbol[NEPC_ARPC$regulate=='down-regulated']
@@ -400,12 +486,12 @@ down_NEPC_ARPC <- NEPC_ARPC$Gene_symbol[NEPC_ARPC$regulate=='down-regulated']
 up_WGCNA <- read.csv('WCGNAupgenes.csv')[,1]
 down_WGCNA <- read.csv('WCGNAdowngenes.csv')[,1]
 
-FindMarkers <- read.csv('G:/importance/undergraduated/2_CRPC/第二版/单细胞测序建模/FindMarkers_DEG(NE VS ALL).csv')
+FindMarkers <- read.csv('FindMarkers_DEG(NE VS ALL).csv')
 up_FindMarkers<- FindMarkers$X[FindMarkers$avg_log2FC >= 2&FindMarkers$p_val_adj <=0.01&FindMarkers$PCTD>=0.2]
-FindMarkers2 <- read.csv('G:/importance/undergraduated/2_CRPC/第二版/单细胞测序建模/FindMarkers_DEG(NE VS L).csv')
+FindMarkers2 <- read.csv('FindMarkers_DEG(NE VS L).csv')
 down_FindMarkers<- FindMarkers2$X[FindMarkers2$avg_log2FC <= -2&FindMarkers2$p_val_adj <=0.01&FindMarkers2$PCTD>=0.25]
 
-Pseudobulk <- read.csv('G:/importance/undergraduated/2_CRPC/第二版/单细胞测序建模/Pseudobulk_DEGs.csv')
+Pseudobulk <- read.csv('Pseudobulk_DEGs.csv')
 up_Pseudobulk<- Pseudobulk$X[Pseudobulk$log2FoldChange >= 2&Pseudobulk$padj <=0.01]
 down_Pseudobulk<- Pseudobulk$X[Pseudobulk$log2FoldChange <= -2&Pseudobulk$padj <=0.01]
 
@@ -433,7 +519,7 @@ venn.diagram(x=list(up_set1,up_set2,up_set3,up_set4,up_set5),
              cat.col='black' ,   #cat.col=c('#FFFFCC','#CCFFFF',.....)根据相应颜色改变标签颜色
              cat.default.pos = "text",  # 标签位置, outer内;text 外
              output=TRUE,
-             filename='G:/importance/undergraduated/2_CRPC/第二版/DEG、WGNA/upgene_VENE.TIF',# 文件保存
+             filename='upgene_VENE.TIF',# 文件保存
              imagetype="tiff",  # 类型（tiff png svg）
              resolution = 600,  # 分辨率
              compression = "lzw"# 压缩算法
@@ -467,7 +553,7 @@ venn.diagram(x=list(down_set1,down_set2,down_set3,down_set4,down_set5),
              cat.col='black' ,   #cat.col=c('#FFFFCC','#CCFFFF',.....)根据相应颜色改变标签颜色
              cat.default.pos = "text",  # 标签位置, outer内;text 外
              output=TRUE,
-             filename='G:/importance/undergraduated/2_CRPC/第二版/DEG、WGNA/downgene_VENE.TIF',# 文件保存
+             filename='downgene_VENE.TIF',# 文件保存
              imagetype="tiff",  # 类型（tiff png svg）
              resolution = 600,  # 分辨率
              compression = "lzw"# 压缩算法
@@ -481,184 +567,14 @@ intersection_down_sample <- intersect(intersection_down_sample, down_set5)
 NEPdownsig
 write.csv(NEPdownsig,'NEPdownsig.csv')
 
-
-######################计算基因集评分###########
-genesets <- read.csv('G:/importance/undergraduated/数据集整理/genesets.csv')
-saveRDS(genelist,'genelist.rds')
-Cal_score <- function(seurat.harmony=seurat.harmony,genesets=genesets,ctrl = 100){
-  
-  genelist_all <- list()
-  for (i in seq_along(genesets)) {
-    library(Seurat)
-    genelist.name <- colnames(genesets)[i]
-    print(genelist.name)
-    genelist<- genesets[,i]
-    genelist <- genelist[nzchar(genelist)]
-    
-    genelist_all[[length(genelist_all) + 1]] <- genelist
-    names(genelist_all)[i] <- genelist.name
-    
-    seurat.harmony <- AddModuleScore(seurat.harmony,
-                                     features = list(genelist),
-                                     ctrl = ctrl,search = T,seed = seed,
-                                     name = genelist.name)
-    
-    colname <- grep(genelist.name, colnames(seurat.harmony@meta.data), value = TRUE)
-    if (length(colname) > 1) {
-      seurat.harmony@meta.data[[genelist.name]] <- rowMeans(seurat.harmony@meta.data[, colname], na.rm = TRUE)
-      seurat.harmony@meta.data[, colname] <- NULL
-    } else if (length(colname) == 1) {
-      seurat.harmony@meta.data[[genelist.name]] <- seurat.harmony@meta.data[[colname]]
-      seurat.harmony@meta.data[[colname]] <- NULL
-    }
-    
-    #parts <- strsplit(genelist.name, "\\.")[[1]]
-    #genelist.name_up_down <- paste(parts[1:2], collapse = ".")
-    #col_up_down <- grep(genelist.name_up_down, colnames(seurat.harmony@meta.data), value = TRUE)
-    #if (length(col_up_down) == 2) {
-    #  seurat.harmony@meta.data[[genelist.name_up_down]] <- seurat.harmony@meta.data[,col_up_down[[1]]]-seurat.harmony@meta.data[,col_up_down[[2]]]
-    #  seurat.harmony@meta.data[, col_up_down] <- NULL
-    #}
-    
-  }
-  
-  return(seurat.harmony@meta.data)
-}
-
-score.res <- Cal_score(seurat.harmony=seurat.harmony,genesets=genesets)
-score.res <- seurat.harmony@meta.data
-
-#####################计算celltype的平均值
-celltype_values <- unique(score.res$celltype12)
-result_matrix <- matrix(NA, nrow = length(celltype_values), ncol =29)
-rownames(result_matrix) <- celltype_values
-for (i in 1:29) {
-  for (celltype in celltype_values) {
-    subset_data <- score.res[score.res$celltype12 == celltype, i+30]
-    result_matrix[celltype, i] <- mean(subset_data, na.rm = TRUE)
-  }
-}
-colnames(result_matrix) <- colnames(score.res)[31:59]
-
-View(result_matrix)
-result_matrix <- t(result_matrix)
-write.csv(result_matrix,'celltype_score.csv')
-###################计算sampletype的平均值
-sampleID_values <- unique(score.res$sampleID)
-result_matrix2 <- matrix(NA, nrow = length(sampleID_values), ncol =29)
-rownames(result_matrix2) <- sampleID_values
-for (i in 1:29) {
-  for (sampleID in sampleID_values) {
-    subset_data <- score.res[score.res$sampleID == sampleID, i+30]
-    result_matrix2[sampleID, i] <- mean(subset_data, na.rm = TRUE)
-  }
-}
-colnames(result_matrix2) <- colnames(score.res)[31:59]
-
-View(result_matrix2)
-result_matrix2 <- t(result_matrix2)
-write.csv(result_matrix2,'sampleID_score.csv')
-######################小提琴图##################
-library(ggpubr) 
-for (i in seq_along(genelist_all)) {
-  print(i)
-  geneSet <- names(genelist_all)[i]
-ggviolin(seurat.harmony@meta.data, x="celltype", y=geneSet, width = 1, 
-         color = "black",#轮廓颜色
-         fill="celltype",#填充
-         palette = col,
-         add = 'mean_sd',
-         ylab=geneSet,font.y = 24,
-         xlab = F, #不显示x轴的标签
-         bxp.errorbar=T,#显示误差条
-         bxp.errorbar.width=0.5, #误差条大小
-         size=1, #箱型图边线的粗细
-         outlier.shape=NA, #不显示outlier
-         legend = "none"
-)+ theme(
-  axis.text.x = element_text(size = 20, angle = 45, hjust = 1),  # x轴标签设置
-  axis.text.y = element_text(size = 20))  # y轴标签设置
-ggsave(filename = paste0('AUCell/', geneSet, '.pdf'), width = 6, height = 6, units = 'in')
-}
-######################散点图####################
-library(tidyverse)
-library(ggplot2)
-library(ggpubr)
-data <- read.csv('sampleID_score.csv',row.names = 1)
-colnames(data)
-data$sampletype <- factor(data$sampletype,levels = c('Primary','mCSPC','CRPC','mCRPC','NEPC'))
-
-datane <- data %>%
-  filter(NE == 'NE')
-# 根据 NE 的不同值指定颜色
-for (i in 1:27) {
-  datasetID <- colnames(data)[i]
-  print(datasetID)
-  #############散点图1
-  ggplot() +
-    geom_point(data = data,
-               aes(x = ISUP, y = data[[datasetID]], fill = NE),
-               size = 5,
-               shape = 21,
-               color = "black") +
-    theme_classic() +
-    theme(
-      legend.position = "top",
-      legend.text = element_text(face = "italic",size = 24),
-      axis.title.x = element_text(size = 24), axis.text = element_text(size = 20,color = "black"),
-      axis.title.y = element_text(size = 24),axis.line = element_line(color = "black", size = 0),
-      panel.border = element_rect(color = "black", fill = NA, size = 2)  # 添加边框
-    ) +
-    guides(fill = guide_legend(ncol = 2, title = NULL,size = 24)) +
-    labs(x = "ISUP",
-         y = "Mudule Score") +
-    scale_fill_manual(values = c("NE" = "#ce5c69", "nonNE" = "#5770a6")) +
-    stat_cor(data = data, aes(x = ISUP, y = data[[datasetID]]), method = "pearson", 
-             label.y = max(data[[datasetID]], na.rm = TRUE) * 0.9, size = 6) +
-    # 添加带置信区间的回归线
-    geom_smooth(data = data, aes(x = ISUP, y = data[[datasetID]]), 
-                method = "lm", 
-                se = TRUE,  # 显示置信区间
-                color = "#a281b1", 
-                linetype = "dashed",  # 设置为虚线
-                size = 1.5)  # 设置线条粗细
-  ggsave(filename = paste0('ISUP/', datasetID, '.pdf'), width = 6, height = 6, units = 'in')
-}
-######################箱式图#####################
-for (i in 1:27) {
-  datasetID <- colnames(data)[i]
-  print(datasetID)
-  
-  comparisons_list <- list(
-    c("NEPC", "CRPC"),
-    c("NEPC", "mCRPC"),
-    c("NEPC", "mCSPC") ,
-    c("NEPC", "Primary") # 添加更多的比较组
-  )
-  
-  # 使用 ggplot 绘制图形
-  ggplot(seurat.harmony@meta.data, aes(x = sampletype, y = datasetID)) +
-    geom_boxplot(outlier.size = 1.5, size = 1.2, aes(color = NE), outlier.shape = NA) +  # 设置箱式图的边框颜色
-    geom_jitter(aes(fill = NE), position = position_jitter(width = 0.3), size = 5, shape = 21, color = "black") +  # 设置散点的边框颜色为黑色
-    theme_minimal(base_size = 16, base_family = "sans") + 
-    theme(
-      text = element_text(size = 16),  # 调整字体大小
-      axis.title = element_text(size = 24),  # 调整轴标题的大小
-      axis.text = element_text(size = 20,color = "black"), 
-      panel.grid.major = element_blank(),  # 去掉主网格线
-      panel.grid.minor = element_blank(),  # 去掉次网格线
-      axis.line = element_line(size = 0.5)  # 添加坐标轴线
-    ) +
-    labs(x = "", y = "Module Score") +
-    scale_color_manual(values = c("#ce5c69", "#5770a6"), name = NULL) +  # 设置箱式图的边框颜色
-    scale_fill_manual(values = c("#ce5c69", "#5770a6"), name = NULL) +  # 设置散点的填充色
-    geom_signif(comparisons = comparisons_list, test = "wilcox.test", map_signif_level = TRUE) +  # 添加多个组的比较
-    facet_wrap(~ datasetID, scales = "free_y")  # 按 datasetID 分面，y轴自由缩放
-  
-  ggsave(filename = paste0('sampletype/', datasetID, '.pdf'), width = 6 ,height = 6, units = 'in')
-}
-
-######################热图#########
+#########################################
+##################Figure 3I-J##############
+#########################################
+#see the code’1.Single-cell atlas.R‘
+#see the code’1.Single-cell atlas.R‘                     
+#########################################
+##################Figure 3K-L##############
+#########################################
 bs = split(colnames(sce),sce@meta.data$celltype12)
 ct = do.call(
   cbind,lapply(names(bs), function(x){ 
