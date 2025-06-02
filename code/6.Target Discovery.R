@@ -437,7 +437,7 @@ write.csv(drug2,'drug2.csv')
 
 
 # 使用 reshape2 包的 melt 函数将数据从宽格式转换为长格式
-data <- read.csv('drug3.csv')
+data <- read.csv('drug2.csv')
 
 library(reshape2)
 
