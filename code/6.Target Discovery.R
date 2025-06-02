@@ -1,4 +1,6 @@
-############变异火山图筛选基因########
+#########################################
+##################Figure 8A#############
+#########################################
 library(tidyverse)
 library(ggrepel)
 
@@ -131,7 +133,9 @@ ggsave("FC-FC dot plot.pdf", height = 4, width = 6,device = cairo_pdf)
 
 
 
-#############多因子箱线图##################
+#########################################
+##################Figure 8C#############
+#########################################
 library(ggsignif)
 df.list <- list()
 for (i in 1:5) {
@@ -202,7 +206,10 @@ ggplot(df.combi, aes(x =group, y = AMIGO2)) +
               y_position = max(df.combi$AMIGO2))+  # 调整 y_position 以避免与箱式图重叠
   facet_wrap(~ dataset,nrow=1)  # 根据 Group 列分面
 col6 <- c('#5770a6','#ce5c69')
-#############相关性###################################
+
+#########################################
+##################Figure 8D#############
+#########################################
 library(dplyr)
 library(correlation) #install.packages('correlation')
 library(ggplot2)
@@ -250,7 +257,9 @@ cor$gene <- NULL
 write.csv(cor,'AMIGO2_cor_final.csv')
 
 
-#############堆叠柱状图##########################
+#########################################
+##################Figure 8F#############
+#########################################
 ###Stacked bar plot###
 #Reference:
 #Muñoz, K.A., Ulrich, R.J., Vasan, A.K. et al. A Gram-negative-selective antibiotic that spares the gut microbiome. Nature 630, 429–436 (2024).
@@ -308,7 +317,9 @@ ggplot(data = dt_long,aes(x = ID,y = Value, fill = IHC))+
 p
 ggsave(filename = "Stacked bar plot.pdf", plot =p, height = 4, width = 6 )
 
-#############IHC相关性######
+#########################################
+##################Figure 8H#############
+#########################################
 cor_ihc <- read.csv('cor_AR_AMIGO2.csv',row.names = 1)
 library(circlize)
 col_fun = colorRamp2(c(15,19,23), c('#5770a6','white',"#ce5c69"))
@@ -334,7 +345,9 @@ Heatmap(cor_ihc[,-3],  # 不包含 NE 列
         row_gap = unit(5, "mm"),  # 调整行分割的宽度
         column_gap = unit(3, "mm"),
         heatmap_legend_param = list(title = "IHC-score", title_gp = gpar(fontsize = 12, fontface = "bold")))
-#############cellline#########
+#########################################
+##################Figure 8J#############
+#########################################
 cellline <- read.csv("cor_pseudotime.csv")
 
 # 加载必要的库
@@ -378,7 +391,9 @@ ggplot(data = cellline,
     axis.title = element_text(size = 20),
     axis.text = element_text(size = 16),
     axis.ticks.y = element_blank())
-#############drug#####
+#########################################
+##################Figure 8K#############
+#########################################
 
 drug <- read.csv('drug.csv')
 drug<- subset(drug,cor>0&fdr<0.05)
