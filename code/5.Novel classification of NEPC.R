@@ -1,4 +1,6 @@
-####################################
+#########################################
+##################Figure 6A-B##############
+#########################################
 NE_sce = seurat.harmony[, Idents(seurat.harmony) %in% 'NE']
 
 #标准化等
@@ -50,7 +52,9 @@ NE_sce@meta.data <- NE_sce@meta.data %>%
     seurat_clusters %in% subtype4 ~ 'subtype4'))
 
 saveRDS(NE_sce,'NE_sce.rds')
-#########################GSVA###################
+#########################################
+##################Figure 6C##############
+#########################################
 
 library(ggplot2)
 library(dplyr)
@@ -123,7 +127,9 @@ p <- pheatmap(z_scores_scaled,
 pdf(("gsva_celltype.pdf"),width = 8,height = 40)
 print(p)
 dev.off()
-###############气泡图##################
+#########################################
+##################Figure 6E##############
+#########################################
 genes <- c(#Neur
   'CHGA','CHGB','STX19','SNAP25','CA9',
   #Prol
@@ -135,7 +141,9 @@ genes <- c(#Neur
 DotPlot(object = NE_sce,features = genes,group.by = 'subtype') + coord_flip()
 
 
-############## GO富集分析#############
+#########################################
+##################Figure 6G##############
+#########################################
 GO <- enrichGO(gene = Genes$ENTREZID, #输入基因的"ENTREZID"
                OrgDb = org.Hs.eg.db,#注释信息
                keyType = "ENTREZID",
@@ -150,7 +158,9 @@ GO_result <- as.data.frame(GO)#转化结果
 barplot(GO)
 write.csv(GO,'subtype1_GO.csv')
 
-#############MTF########################
+#########################################
+##################Figure 6H##############
+#########################################
 library(CaCTS)
 
 Idents(NE_sce)<- NE_sce$seurat_clusters
@@ -230,7 +240,9 @@ ggplot(TF, aes(x = subtype, y = Name, size = LogValue, fill = Expr.mean)) +
   scale_color_gradientn(colours = c('#5770a6',"white", "#ce5c69"),limits = c(-1.5, 1.5))+
   guides(size = guide_legend(title = "Percent Expression"))# 颜色   # 去掉# 添加标题
 
-##########################旧分类############
+#########################################
+##################Figure 6I##############
+#########################################
 
 Idents(NE_sce)<- NE_sce$seurat_clusters
 av.exp<- AggregateExpression(NE_sce)$RNA
@@ -283,8 +295,15 @@ Heatmap(z_scores_normalized,  # 不包含 NE 列
 #column_gap = unit(5, "mm"),  # 调整列分割的宽度
 # right_annotation = ha_right,
 #top_annotation = ha_top_combined)
+#########################################
+##################Figure J-K##############
+#########################################
+#see the code’1.Single-cell atlas.R‘
+#see the code’1.Single-cell atlas.R‘  
 
-#####################拟时序分析#########
+#########################################
+##################Figure 7A##############
+#########################################
 library(Seurat)
 library(dplyr)
 library(patchwork)
@@ -376,7 +395,9 @@ plot_cells(cds, color_cells_by = "pseudotime", label_cell_groups = FALSE,
   ggplot2::scale_colour_gradientn(name = "Pseudotime", 
                                   colours = rev(rbPal(100)))
 
-###############多组火山图########
+#########################################
+##################Figure 6D##############
+#########################################
 library(ggplot2)
 library(ggrepel)
 library(ggnewscale)
@@ -451,7 +472,9 @@ p
 
 ggsave("multi-comparison dot plot.pdf", plot = p, width = 10, height = 6, device = cairo_pdf)
 
-###############分组图######
+#########################################
+##################Figure 7F-G##############
+#########################################
 
 data <- NE_sce@meta.data
 table(data$sampletype)
@@ -579,7 +602,9 @@ ggplot(data) +
             inherit.aes = FALSE)
 
 p
-#############bulk celltype 浸润#############
+#########################################
+##################Figure 7H##############
+#########################################
 deg <- read.csv('output_memento.csv')
 
 table(deg$subtype)
@@ -708,7 +733,9 @@ vcdTernaryPlot(
 )
 
 
-############药物敏感性##########
+#########################################
+##################Figure 7K##############
+#########################################
 library(limma)
 library(oncoPredict)
 library(parallel)
