@@ -6,7 +6,7 @@ library(ggrepel)
 
 rna <- read.csv('NEC-NE_EMT-NE_limma.csv')
 scrna <- read.csv('output_memento.csv')
-scrna <- subset(scrna,scrna$subtype=='NEC_O')
+scrna <- subset(scrna,scrna$subtype=='VR_O')
 
 colnames(scrna)[1] <- 'Gene_symbol'
 scrna <- scrna |> 
