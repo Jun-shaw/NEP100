@@ -630,7 +630,7 @@ marker <- list(NEC_O=NEC_O_marker,
 library(IOBR)
 rs2 <- IOBR::calculate_sig_score(pdata           = NULL,
                                  eset            = expr,
-                                 signature       = list(intersection_up_sample),
+                                 signature       = list(marker),
                                  method          = "ssgsea",
                                  mini_gene_count = 0)
 
