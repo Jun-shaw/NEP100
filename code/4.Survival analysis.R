@@ -32,6 +32,7 @@ NEP <- new[,colnames(new)%in% c('ID','NEP100')]
 merged_data <- left_join(NEP,cli,by='ID')
 
 df <- merged_data[,colnames(merged_data)%in% c('ID','OS.time','OS','NEP100')]
+df <-  na.omit(df)
 
 #df$days_to_recurrence <- df$days_to_recurrence/30
 #df <- na.omit(df)
