@@ -41,6 +41,7 @@ df$OS <- factor(df$OS)
 res.cut <- surv_cutpoint(df,time = "OS.time", event = "OS",variables = 'NEP100')
 cutoff <- res.cut$cutpoint$cutpoint
 df$group <- ifelse(df$NEP100 >=cutoff, "High", "Low") %>% factor(levels = c("Low","High"))
+df$OS <-as.numeric(OS)
 #########################################
 ##################Figure 5A##############
 #########################################
