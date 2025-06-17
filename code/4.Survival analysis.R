@@ -20,7 +20,7 @@ new$ID <- row.names(new)
 
 cli <- df[,1:3]
 cli <- cli[,colnames(cli)%in%c('ID','OS.time','OS')]
-colnames(cli)  <- c('ID','OS','OS.time')
+
 cli$ID <- gsub("-", ".", cli$ID)
 
 cli <- subset(cli,cli$ID%in% colnames(new))
