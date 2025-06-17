@@ -37,7 +37,7 @@ df <-  na.omit(df)
 #df$days_to_recurrence <- df$days_to_recurrence/30
 #df <- na.omit(df)
 df$OS.time <- as.numeric(df$OS.time)
-df$OS <- as.numeric(df$OS)
+df$OS <- factor(df$OS)
 res.cut <- surv_cutpoint(df,time = "OS.time", event = "OS",variables = 'NEP100')
 cutoff <- res.cut$cutpoint$cutpoint
 df$group <- ifelse(df$VR.NE >=1, "High", "Low") %>% factor(levels = c("Low","High"))
