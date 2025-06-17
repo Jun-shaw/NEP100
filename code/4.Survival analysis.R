@@ -16,7 +16,7 @@ df <- prog.data.list[[1]]
 
 expr<- df[,-c(1:3)]
 new <- NEP100(expr,type='bulk',layer='data',species = 'homo')
-new$ID <- row.names(ID)
+new$ID <- row.names(new)
 
 cli <- df[,1:3]
 cli <- cli[,colnames(cli)%in%c('ID','OS.time','OS')]
